@@ -4,6 +4,7 @@
 #include "AdafruitIO_WiFi.h"
 #include "SparkFun_SCD30_Arduino_Library.h"
 #include "credentials.h"
+#include <LiquidCrystal_I2C.h>
 
 AdafruitIO_WiFi io(IO_USERNAME, IO_KEY, "", "");
 AdafruitIO_Feed *co2Feed = io.feed("CO2");
@@ -12,6 +13,7 @@ AdafruitIO_Feed *relativeHumidityFeed = io.feed("rh_percentage");
 
 SCD30 airSensor;
 WiFiManager wifiManager;
+LiquidCrystal_I2C lcd(0x61);
 
 bool send = false;
 
@@ -63,9 +65,13 @@ void setup() {
   Wire.begin();
   startAirsensor();
   
+  // Switch on the backlight
+  lcd.begin(16,2);               // initialize the lcd 
+  lcd.backlight();
 } 
 
 void loop() {
+  lcd.print("hallo");
   if (airSensor.dataAvailable()) {
     io.run();
   
@@ -75,6 +81,7 @@ void loop() {
 
   // Reduce interval to reduce power consumption + to prevent pulling too much current
     delay(5000);
+    lcd.clear();
   }
   else {
     Serial.println("Waiting for new data");
