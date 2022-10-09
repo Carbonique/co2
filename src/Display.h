@@ -38,6 +38,8 @@
 class Display: public U8G2_SSD1306_128X64_NONAME_F_HW_I2C {
     int current_wifi_icon = 0 ;
     int current_adafruit_connected_icon = 0;
+    int last_measured_co2;
+    int last_measured_temp;
 
     bool isCurrentWifiIcon(int new_icon){
         return new_icon == current_wifi_icon;
@@ -110,19 +112,50 @@ class Display: public U8G2_SSD1306_128X64_NONAME_F_HW_I2C {
         }
 
         void printCo2(uint16_t value){
+            
+            //Draw a box to clear screen. Don't do this everytime, as it looks ugly.
+            //Clearing the screen is necessary because of number of digits changing
+            if(last_measured_co2 >= 1000 && value < 1000){
+                //First clear the current text, to make sure 
+                //Everything keeps working when cursor moves if ppm < 1000
+                (*this).setDrawColor(0);
+                (*this).drawBox(12,12,130,30);
+                (*this).sendBuffer();
+            }
+
             if(value < 1000){
                 (*this).setCursor(36,40);
             } else{
                 (*this).setCursor(26,40);
             }
-            
+
+            (*this).setDrawColor(1);
             (*this).setFont(u8g2_font_inr27_mr);
             (*this).print(value);
             (*this).sendBuffer();
+
+            last_measured_co2 = value;
         }
 
         void printTemp(uint16_t value){
-            (*this).setCursor(30,TEMP_Y);
+
+            //Draw a box to clear screen. Don't do this everytime, as it looks ugly.
+            //Clearing the screen is necessary because of number of digits changing
+            if(last_measured_temp >= 10 && value < 10){
+                //First clear the current text, to make sure 
+                //Everything keeps working when cursor goes below < 10
+                (*this).setDrawColor(0);
+                (*this).drawBox(10,TEMP_Y - 20,168,10);
+                (*this).sendBuffer();
+            }
+
+            if(value < 10){
+                (*this).setCursor(30,TEMP_Y);
+            } else{
+                (*this).setCursor(25,TEMP_Y);
+            }
+
+
             (*this).setFont(DEFAULT_FONT_MEDIUM);
             (*this).print(value);
             
@@ -131,6 +164,7 @@ class Display: public U8G2_SSD1306_128X64_NONAME_F_HW_I2C {
             (*this).drawGlyph((*this).getCursorX() + 1, TEMP_Y,TEMP_ICON);
             
             (*this).sendBuffer();
+            last_measured_temp = value;
         }
 
         void printHumidity(uint16_t value){
