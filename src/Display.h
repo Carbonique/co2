@@ -20,11 +20,16 @@
 #define ADAFRUIT_CONNECTED_ICON 57643
 #define ADAFRUIT_NOT_CONNECTED_ICON 57523
 
-#define TINY_ICON_FONT u8g2_font_unifont_t_symbols 
-#define CELSIUS_ICON 8451
-#define PERCENTAGE_ICON 37
+#define TEMP_ICON_FONT u8g2_font_unifont_t_symbols 
+#define TEMP_Y 62
+#define TEMP_ICON 8451
+
+#define HUMIDITY_ICON_FONT u8g2_font_unifont_t_symbols 
+#define HUMIDITY_Y 62
+#define HUMIDITY_ICON 37
+
 //Fonts
-#define DEFAULT_FONT u8g2_font_t0_18_mf
+#define DEFAULT_FONT_MEDIUM u8g2_font_t0_18_mf
 #define DEFAULT_FONT_SIZE 18
 
 // https://raw.githubusercontent.com/wiki/olikraus/u8g2/fntpic/u8g2_font_waffle_t_all.png
@@ -108,32 +113,32 @@ class Display: public U8G2_SSD1306_128X64_NONAME_F_HW_I2C {
         void printCo2(uint16_t value){
             (*this).setCursor(36,40);
             (*this).setFont(u8g2_font_inr27_mr);
-            (*this).print(value);	// write something to the internal memory
-            (*this).sendBuffer();					// transfer internal memory to the display
+            (*this).print(value);
+            (*this).sendBuffer();
         }
 
         void printTemp(uint16_t value){
-            (*this).setCursor(28,62);
-            (*this).setFont(DEFAULT_FONT);
-            (*this).print(value);	// write something to the internal memory
+            (*this).setCursor(30,TEMP_Y);
+            (*this).setFont(DEFAULT_FONT_MEDIUM);
+            (*this).print(value);
             
-            (*this).setFont(TINY_ICON_FONT);
+            (*this).setFont(TEMP_ICON_FONT);
             
-            (*this).drawGlyph((*this).getCursorX() + 1, 62,CELSIUS_ICON);	// write something to the internal memory
+            (*this).drawGlyph((*this).getCursorX() + 1, TEMP_Y,TEMP_ICON);
             
-            (*this).sendBuffer();					// transfer internal memory to the display
+            (*this).sendBuffer();
         }
 
         void printHumidity(uint16_t value){
 
-            (*this).setCursor(80,62);
-            (*this).setFont(DEFAULT_FONT);
-            (*this).print(value);	// write something to the internal memory
+            (*this).setCursor(80,HUMIDITY_Y);
+            (*this).setFont(DEFAULT_FONT_MEDIUM);
+            (*this).print(value);
 
-            (*this).setFont(TINY_ICON_FONT);
-            (*this).drawGlyph((*this).getCursorX() + 3,62,PERCENTAGE_ICON);	// write something to the internal memory
+            (*this).setFont(HUMIDITY_ICON_FONT);
+            (*this).drawGlyph((*this).getCursorX() + 1,HUMIDITY_Y,HUMIDITY_ICON);
 
-            (*this).sendBuffer();					// transfer internal memory to the display
+            (*this).sendBuffer();
         }
 
 };
