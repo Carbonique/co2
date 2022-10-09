@@ -103,14 +103,14 @@ void loop() {
     case true:
 
       if(adafruitConnected){
-//        adafruitManager.sendToFeed(co2Feed, co2);
-//        adafruitManager.sendToFeed(temperatureFeed, temp);
-//        adafruitManager.sendToFeed(relativeHumidityFeed, humidity);
+        adafruitManager.sendToFeed(co2Feed, co2);
+        adafruitManager.sendToFeed(temperatureFeed, temp);
+        adafruitManager.sendToFeed(relativeHumidityFeed, humidity);
       }
       display.printCo2(co2);
       display.printTemp(temp);
       display.printHumidity(humidity);
-      delay(2000);
+      delay(10000);
 
       break;
   } 
