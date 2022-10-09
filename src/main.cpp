@@ -23,7 +23,7 @@ AdafruitIO_Feed *temperatureFeed = adafruitManager.feed("temp_celsius");
 AdafruitIO_Feed *relativeHumidityFeed = adafruitManager.feed("rh_percentage");
 
 // Function declaration
-void setupAirsensor(SCD30 &airSensor, TwoWire wire);
+void setupAirsensor(SCD30 &airSensor);
 void configModeCallback (WiFiManager *wm);
 void setupWiFiManager(WiFiManager &wm, Display &display);
 bool wifiIsConnected();
@@ -34,9 +34,8 @@ void setAdafruitIconBasedOnConnection(Display &display, bool connected);
 void setup() {
   
   Serial.begin(9600);
-  Wire.begin();
-  Wire.setClockStretchLimit(1500);
   //Would be better if we could pass the Wire object to setup(), but I never got that working
+  Wire.begin(SDA_1, SCL_1);
   display.setup(u8g2_font_inr33_mn);
   
   //WiFiManager, Local intialization. Once its business is done, there is no need to keep it around
@@ -48,13 +47,13 @@ void setup() {
   }
 
   //Would be better if we could pass the Wire object to setupAirsensor(), but I never got that working
-  Wire1.begin(SDA_2, SCL_2);
-  Wire1.setClockStretchLimit(1500);
-  setupAirsensor(airSensor, Wire1);  
+  Wire.begin(SDA_2, SCL_2);
+  setupAirsensor(airSensor);  
 } 
 
 void loop() {
   Serial.println("Loop()");
+  Wire.begin(SDA_1, SCL_1);
 
   // First check wifi connection + print wifi icon
   bool wifiConnected = wifiIsConnected();
@@ -76,6 +75,7 @@ void loop() {
 
   setAdafruitIconBasedOnConnection(display, adafruitConnected);
 
+  Wire.begin(SDA_2, SCL_2);
   // Now that we know all connnection statuses, it's time to do some measurements
   uint16_t co2;
   uint16_t temp;
@@ -91,6 +91,8 @@ void loop() {
     humidity = airSensor.getHumidity();
     proceed = true;
   }
+  
+  Wire.begin(SDA_1, SCL_1);
 
   switch (proceed) {
     case false:
@@ -101,24 +103,23 @@ void loop() {
     case true:
 
       if(adafruitConnected){
-//        adafruitManager.sendToFeed(co2Feed, co2);
-//        adafruitManager.sendToFeed(temperatureFeed, temp);
-//        adafruitManager.sendToFeed(relativeHumidityFeed, humidity);
+        adafruitManager.sendToFeed(co2Feed, co2);
+        adafruitManager.sendToFeed(temperatureFeed, temp);
+        adafruitManager.sendToFeed(relativeHumidityFeed, humidity);
       }
-
       display.printCo2(co2);
       display.printTemp(temp);
       display.printHumidity(humidity);
-      delay(5000);
+      delay(10000);
 
       break;
   } 
 }
 
-void setupAirsensor(SCD30 &airSensor, TwoWire wire){
+void setupAirsensor(SCD30 &airSensor){
   Serial.println("Starting airsensor");
 
-  if (airSensor.begin(wire) == false) {
+  if (airSensor.begin() == false) {
     Serial.println("Air sensor not detected. Please check wiring. Freezing...");
     while (1)
       ;

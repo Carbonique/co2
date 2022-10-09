@@ -109,9 +109,13 @@ class Display: public U8G2_SSD1306_128X64_NONAME_F_HW_I2C {
             }
         }
 
-
         void printCo2(uint16_t value){
-            (*this).setCursor(36,40);
+            if(value < 1000){
+                (*this).setCursor(36,40);
+            } else{
+                (*this).setCursor(26,40);
+            }
+            
             (*this).setFont(u8g2_font_inr27_mr);
             (*this).print(value);
             (*this).sendBuffer();
