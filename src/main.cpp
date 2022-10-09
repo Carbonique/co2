@@ -1,9 +1,11 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include <adafruitIO.h>
-#include <display.h>
-#include <scd30.h>
-#include <wifi.h>
+#include <AdafruitManager.h>
+#include <Display.h>
+#include <WiFiManager.h>
+#include <SparkFun_SCD30_Arduino_Library.h>
+#include <credentials.h>
+#include "AdafruitIO.h"
 
 #define SDA_1 4 //D2, default pin for SDA
 #define SCL_1 5 //D1, default pin for SCL
@@ -12,10 +14,115 @@
 #define SCL_2 12 //D6
 
 SCD30 airSensor;
-U8G2_SSD1306_128X64_NONAME_F_HW_I2C display(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+Display display(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+AdafruitManager adafruitManager(IO_USERNAME, IO_KEY,"","");
 
-bool send = false;
-bool WifiConnected;
+AdafruitIO_Feed *co2Feed = adafruitManager.feed("CO2");
+AdafruitIO_Feed *temperatureFeed = adafruitManager.feed("temp_celsius");
+AdafruitIO_Feed *relativeHumidityFeed = adafruitManager.feed("rh_percentage");
+
+// Function declaration
+void setupAirsensor(SCD30 &airSensor);
+void configModeCallback (WiFiManager *wm);
+void setupWiFiManager(WiFiManager &wm, Display &display);
+bool wifiIsConnected();
+int getQuality();
+void setWifiIconBasedOnQuality(Display &display);
+void setAdafruitIconBasedOnConnection(Display &display, bool connected);
+
+void setup() {
+  
+  Serial.begin(9600);
+  Wire.begin();
+  
+  //Would be better if we could pass the Wire object to setup(), but I never got that working
+  display.setup(u8g2_font_inr33_mn);
+  
+  //WiFiManager, Local intialization. Once its business is done, there is no need to keep it around
+  WiFiManager wifiManager;
+  setupWiFiManager(wifiManager, display);
+  
+  if(wifiIsConnected()){
+    adafruitManager.connect();
+  }
+
+  //Would be better if we could pass the Wire object to setupAirsensor(), but I never got that working
+  setupAirsensor(airSensor);
+
+  
+} 
+
+void loop() {
+  Serial.println("Loop()");
+
+  // First check wifi connection + print wifi icon
+  bool wifiConnected = wifiIsConnected();
+  setWifiIconBasedOnQuality(display);
+
+  // Now check whether Adafruit connection is running
+
+  bool adafruitConnected; 
+
+  switch (wifiConnected) {
+    case false:
+      adafruitConnected = false;
+      break;
+    case true:
+      adafruitManager.run();
+      adafruitConnected = adafruitManager.isConnected();
+      break;
+  }
+
+  setAdafruitIconBasedOnConnection(display, adafruitConnected);
+
+  // Now that we know all connnection statuses, it's time to do some measurements
+  uint16_t co2;
+  uint16_t temp;
+  uint16_t humidity;
+  
+  // We use proceed as to resemble an 'exit if'. 
+  // If no data is available, we will 'exit' the loop
+  bool proceed = false;
+
+  if (airSensor.dataAvailable()) {
+    co2 = airSensor.getCO2();
+    temp = airSensor.getTemperature();
+    humidity = airSensor.getHumidity();
+    proceed = true;
+  }
+
+  switch (proceed) {
+    case false:
+      Serial.println("Waiting for new data");
+      delay(500);
+      break;
+
+    case true:
+
+      if(adafruitConnected){
+//        adafruitManager.sendToFeed(co2Feed, co2);
+//        adafruitManager.sendToFeed(temperatureFeed, temp);
+//        adafruitManager.sendToFeed(relativeHumidityFeed, humidity);
+      }
+
+      display.printCo2(co2);
+      display.printTemp(temp);
+      display.printHumidity(humidity);
+      delay(5000);
+
+      break;
+  } 
+}
+
+void setupAirsensor(SCD30 &airSensor){
+  Serial.println("Starting airsensor");
+
+  if (airSensor.begin() == false) {
+    Serial.println("Air sensor not detected. Please check wiring. Freezing...");
+    while (1)
+      ;
+  }
+}
 
 void configModeCallback (WiFiManager *wm) {
   Serial.println("Entered config mode");
@@ -31,7 +138,7 @@ void configModeCallback (WiFiManager *wm) {
   display.sendBuffer();					// transfer internal memory to the display
 }
 
-bool setupWiFiManager(WiFiManager &wm, U8G2_SSD1306_128X64_NONAME_F_HW_I2C &display){
+void setupWiFiManager(WiFiManager &wm, Display &display){
 
   Serial.println("Starting WifiManager");
 
@@ -58,67 +165,62 @@ bool setupWiFiManager(WiFiManager &wm, U8G2_SSD1306_128X64_NONAME_F_HW_I2C &disp
     else {
     Serial.println("WiFi connected");
   }
-  return res;
 }
 
-void setup() {
-  
-  Serial.begin(9600);
-  Wire.begin();
-  
-  //Would be better if we could pass the Wire object to setupDisplay(), but I never got that working
-  setupDisplay(display, u8g2_font_inr33_mn);
-  
-  //WiFiManager, Local intialization. Once its business is done, there is no need to keep it around
-  WiFiManager wifiManager;
+bool wifiIsConnected(){
+  return WiFi.status() == WL_CONNECTED;
+}
 
-  WifiConnected = setupWiFiManager(wifiManager, display);
-  
-  if(WifiConnected){
-    setupAdafruitConnection(adafruitIO);
+// Source: https://github.com/tttapa/Projects/blob/master/ESP8266/WiFi/RSSI-WiFi-Quality/RSSI-WiFi-Quality.ino
+/*
+   Return the quality (Received Signal Strength Indicator)
+   of the WiFi network.
+   Returns a number between 0 and 100 if WiFi is connected.
+   Returns -1 if WiFi is disconnected.
+*/
+int getQuality() {
+  if (WiFi.status() != WL_CONNECTED)
+    return -1;
+  int dBm = WiFi.RSSI();
+  if (dBm <= -100)
+    return 0;
+  if (dBm >= -50)
+    return 100;
+  return 2 * (dBm + 100);
+}
+
+void setWifiIconBasedOnQuality(Display &display){
+  int quality = getQuality();
+
+  switch(quality){
+    case -1:
+      Serial.println("No wifi connected. Setting icon to off.");
+      display.setWifiIconOff();
+      break;
+    case 0:
+      Serial.printf("Wifi is connected, signal is %d.", quality);
+      display.setWifiIconOff();
+      break;
+    case 70 ... 100:
+      Serial.printf("Wifi is connected, signal is %d.", quality);
+      display.setWifiIconHigh();
+      break;
+    case 40 ... 69:
+      Serial.printf("Wifi is connected, signal is %d.", quality);
+      display.setWifiIconMedium();
+      break;
+    case 1 ... 39:
+      Serial.printf("Wifi is connected, signal is %d.", quality);
+      display.setWifiIconLow();
+      break;
   }
 
-  //Would be better if we could pass the Wire object to setupAirsensor(), but I never got that working
-  setupAirsensor(airSensor);
-  
-} 
+}
 
-void loop() {
-  Serial.println("Loop()");
-
-  uint16_t co2;
-  uint16_t temp;
-  uint16_t humidity;
-  // We use proceed as for an 'exit' if. If no data is available, we will 'exit' the loop
-  bool proceed = false;
-  if (airSensor.dataAvailable()) {
-    co2 = airSensor.getCO2();
-    temp = airSensor.getTemperature();
-    humidity = airSensor.getHumidity();
-    proceed = true;
-  }
-
-  if(proceed){
-
-    if(WifiConnected){
-      setWifiIconHigh(display);
-
-      adafruitIO.run();
-      
-      if(AdafruitIOConnected(adafruitIO)){
-        setAdafruitConnectedIcon(display);
-        //sendToFeed(co2Feed, co2);
-      }
-    } else {
-      setWifiIconOff(display);
-    }
-    printCo2(display, co2);
-    printTemp(display, temp);
-    printTemp(display, humidity);
-
-    delay(5000);
-  } else {
-    Serial.println("Waiting for new data");
-    delay(500);
+void setAdafruitIconBasedOnConnection(Display &display, bool connected){
+  if(connected){
+    display.setAdafruitConnectedIcon();
+  } else{
+    display.setAdafruitNotConnectedIcon();
   }
 }
