@@ -21,7 +21,8 @@ Data is shown on display and uploaded to Adafruit IO
 2. Create the `src/credentials.h` file as specified under [credentials](#credentials)
 3. Compile source code and flash to ESP8266
 4. Connect to the WiFi AP using details as displayed on the screen (or wait for 180 if you want to run the device in [offline mode](#offline-mode)).
-5. Have fun :) 
+5. If connected to the WiFi AP: enter WiFi credentials. The device will now restart and send data to Adafruit IO (if configured correctly)
+6. Have fun :) 
 
 
 ### Credentials
