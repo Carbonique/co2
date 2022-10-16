@@ -55,7 +55,7 @@ void setup() {
 } 
 
 void loop() {
-  Serial.println("Loop()");
+
   Wire.begin(SDA_1, SCL_1);
 
   // First check wifi connection + print wifi icon
