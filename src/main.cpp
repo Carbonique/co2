@@ -48,7 +48,10 @@ void setup() {
 
   //Would be better if we could pass the Wire object to setupAirsensor(), but I never got that working
   Wire.begin(SDA_2, SCL_2);
-  setupAirsensor(airSensor);  
+  setupAirsensor(airSensor);
+
+  //Clear display to make sure the loop() start from a cleared screen 
+  display.clearDisplay(); 
 } 
 
 void loop() {
@@ -68,7 +71,8 @@ void loop() {
       adafruitConnected = false;
       break;
     case true:
-      adafruitManager.run();
+      // Fail fast to prevent long waiting if not connected.
+      adafruitManager.run(0U, true);
       adafruitConnected = adafruitManager.isConnected();
       break;
   }
@@ -129,14 +133,16 @@ void setupAirsensor(SCD30 &airSensor){
 void configModeCallback (WiFiManager *wm) {
   Serial.println("Entered config mode");
   //It's not possible to pass display as param, so we use display 'implicitly' 
+  
   display.clearBuffer();					// clear the internal memory
-  display.setFont(DEFAULT_FONT_MEDIUM);
+  display.setFont(u8g2_font_t0_14_mf);
   display.setCursor(0, 15);
-  display.printf("SSID: %s", WM_SSID);
-  display.setCursor(0, (-1 * display.getDescent()) + DEFAULT_FONT_SIZE + display.getCursorY());
+  display.printf("SSID: %s", wm->getConfigPortalSSID().c_str());
+  //14 is font size
+  display.setCursor(0, (-1 * display.getDescent()) + 14 + display.getCursorY());
   display.printf("Key: %s", WM_KEY);
-  display.setCursor(0, (-1 * display.getDescent()) + DEFAULT_FONT_SIZE + display.getCursorY());
-  display.printf("IP: %s", "192.168.4.1");
+  display.setCursor(0, (-1 * display.getDescent()) + 14 + display.getCursorY());
+  display.printf("IP: %s", WiFi.softAPIP().toString().c_str());
   display.sendBuffer();					// transfer internal memory to the display
 }
 
@@ -156,10 +162,10 @@ void setupWiFiManager(WiFiManager &wm, Display &display){
   if(!res) {
     Serial.println("Failed to connect");
     display.clearBuffer();
-    display.setFont(DEFAULT_FONT_MEDIUM);
+    display.setFont(u8g2_font_t0_14_mf);
     display.setCursor(0, 10);
     display.print("WiFi connection");
-    display.setCursor(0, (-1 * display.getDescent()) + DEFAULT_FONT_SIZE + display.getCursorY());
+    display.setCursor(0, (-1 * display.getDescent()) + 14 + display.getCursorY());
     display.print("failed.");
     display.sendBuffer();
     delay(5000);
@@ -200,19 +206,19 @@ void setWifiIconBasedOnQuality(Display &display){
       display.setWifiIconOff();
       break;
     case 0:
-      Serial.printf("Wifi is connected, signal is %d %.\n", quality);
+      Serial.printf("Wifi is connected, signal is %d \n", quality);
       display.setWifiIconOff();
       break;
     case 70 ... 100:
-      Serial.printf("Wifi is connected, signal is %d %.\n", quality);
+      Serial.printf("Wifi is connected, signal is %d \n", quality);
       display.setWifiIconHigh();
       break;
     case 40 ... 69:
-      Serial.printf("Wifi is connected, signal is %d %.\n", quality);
+      Serial.printf("Wifi is connected, signal is %d \n", quality);
       display.setWifiIconMedium();
       break;
     case 1 ... 39:
-      Serial.printf("Wifi is connected, signal is %d %.\n", quality);
+      Serial.printf("Wifi is connected, signal is %d \n", quality);
       display.setWifiIconLow();
       break;
   }
